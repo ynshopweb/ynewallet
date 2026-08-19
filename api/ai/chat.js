@@ -4,195 +4,637 @@
  * Vercel Serverless Function — backend untuk YN AI.
  *
  * Alur keamanan:
- *   1. Frontend mengirim Firebase ID Token (Authorization: Bearer ...)
- *      dari user yang sedang login (window.currentUser.getIdToken()).
- *   2. Function ini memverifikasi token itu ke Firebase Identity
- *      Toolkit (server-side, jadi token tidak bisa dipalsukan dari
- *      browser) dan mendapatkan uid asli pemilik token.
- *   3. uid hasil verifikasi dicocokkan dengan clientUserId yang
- *      dikirim frontend — kalau tidak cocok, request ditolak.
- *   4. OPENAI_API_KEY HANYA ada di environment variable server ini,
- *      TIDAK PERNAH dikirim ke frontend.
+ *   1. Frontend mengirim Firebase ID Token melalui:
+ *      Authorization: Bearer <token>
+ *   2. Token diverifikasi melalui Firebase Identity Toolkit.
+ *   3. UID hasil verifikasi dicocokkan dengan clientUserId.
+ *   4. OPENAI_API_KEY hanya berada di server/Vercel Environment
+ *      Variables dan tidak pernah dikirim ke frontend.
  *
- * Function ini TIDAK pernah menulis ke Firestore. Ia hanya
- * mem-parsing bahasa natural menjadi draft terstruktur (JSON).
- * Penyimpanan sesungguhnya selalu dilakukan oleh frontend
- * (js/ai-chat.js -> window.saveState()) setelah user menekan
- * tombol "Simpan" / "Buat Goal", memakai auth & Firestore rules
- * yang sudah ada.
- *
- * Function ini juga TIDAK melakukan kalkulasi finansial (total
- * saldo, total pengeluaran, dsb) — angka-angka itu sudah dihitung
- * oleh frontend (js/ai-context.js) dan hanya dikirim sebagai
- * ringkasan kecil (bukan seluruh database) lewat field `context`.
+ * Function ini TIDAK menulis ke Firestore.
+ * Function ini hanya membuat draft terstruktur dari bahasa natural.
+ * Penyimpanan tetap dilakukan frontend setelah user melakukan
+ * konfirmasi.
  * ------------------------------------------------------------
  */
 
-// Firebase Web API key project "ynwallet". Key ini SAMA dengan yang
-// ada di js/firebase-config.js — bukan rahasia (Firebase Web API key
-// memang didesain publik, keamanan sesungguhnya ada di Firestore
-// Security Rules). Bisa dioverride lewat env var FIREBASE_API_KEY
-// kalau suatu saat ganti project.
-const FIREBASE_API_KEY = process.env.FIREBASE_API_KEY || "AIzaSyBKoe4dYdqtpXtLSmCF6QrMdh-JGoYW3A8";
+// ============================================================
+// CONFIG
+// ============================================================
+
+const FIREBASE_API_KEY =
+    process.env.FIREBASE_API_KEY ||
+    "AIzaSyBKoe4dYdqtpXtLSmCF6QrMdh-JGoYW3A8";
+
+const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
+
+const OPENAI_MODEL = "gpt-4o-mini";
+
+// ============================================================
+// KATEGORI YN WALLET
+// ============================================================
 
 const EXPENSE_CATEGORIES = [
-    'Makanan', 'Transportasi', 'Belanja', 'Tagihan', 'Rumah', 'Pendidikan',
-    'Hiburan', 'Kesehatan', 'Skincare', 'Kebutuhan pribadi', 'Kebutuhan toko', 'Lainnya'
+    "Makanan",
+    "Transportasi",
+    "Belanja",
+    "Tagihan",
+    "Rumah",
+    "Pendidikan",
+    "Hiburan",
+    "Kesehatan",
+    "Skincare",
+    "Kebutuhan pribadi",
+    "Kebutuhan toko",
+    "Lainnya"
 ];
+
 const INCOME_CATEGORIES = [
-    'Gaji Guru', 'Toko', 'Freelance', 'Invitasi', 'Affiliate', 'Bonus', 'Lainnya'
+    "Gaji Guru",
+    "Toko",
+    "Freelance",
+    "Invitasi",
+    "Affiliate",
+    "Bonus",
+    "Lainnya"
 ];
+
+// ============================================================
+// MAIN HANDLER
+// ============================================================
 
 module.exports = async function handler(req, res) {
-    if (req.method !== 'POST') {
-        res.setHeader('Allow', 'POST');
-        return res.status(405).json({ ok: false, error: 'Method not allowed' });
+
+    // --------------------------------------------------------
+    // 0. METHOD CHECK
+    // --------------------------------------------------------
+
+    if (req.method !== "POST") {
+        res.setHeader("Allow", "POST");
+
+        return res.status(405).json({
+            ok: false,
+            error: "Method not allowed"
+        });
     }
 
-    if (!process.env.OPENAI_API_KEY) {
-        console.error('OPENAI_API_KEY belum diset di environment variables.');
-        return res.status(500).json({ ok: false, error: 'YN AI belum dikonfigurasi di server. Hubungi admin.' });
+    // --------------------------------------------------------
+    // 1. OPENAI CONFIG CHECK
+    // --------------------------------------------------------
+
+    if (!OPENAI_API_KEY) {
+        console.error(
+            "[YN AI] OPENAI_API_KEY belum tersedia di environment."
+        );
+
+        return res.status(500).json({
+            ok: false,
+            error: "YN AI belum dikonfigurasi di server. Hubungi admin."
+        });
     }
 
-    // --- 1) Verifikasi Firebase ID Token ---
-    const authHeader = req.headers.authorization || '';
-    const idToken = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
+    // Safe diagnostic.
+    // Hanya menunjukkan apakah key tersedia.
+    // TIDAK pernah mencetak API key.
+    console.log(
+        "[YN AI] OpenAI API key configured:",
+        Boolean(OPENAI_API_KEY)
+    );
+
+    // --------------------------------------------------------
+    // 2. FIREBASE ID TOKEN
+    // --------------------------------------------------------
+
+    const authHeader = req.headers.authorization || "";
+
+    const idToken = authHeader.startsWith("Bearer ")
+        ? authHeader.slice(7).trim()
+        : null;
+
     if (!idToken) {
-        return res.status(401).json({ ok: false, error: 'Sesi tidak valid, silakan login ulang.' });
+        return res.status(401).json({
+            ok: false,
+            error: "Sesi tidak valid, silakan login ulang."
+        });
     }
+
+    // --------------------------------------------------------
+    // 3. VERIFY FIREBASE ID TOKEN
+    // --------------------------------------------------------
 
     let verifiedUid = null;
+
     try {
+
+        const firebaseLookupUrl =
+            `https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=${FIREBASE_API_KEY}`;
+
         const lookupRes = await fetch(
-            `https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=${FIREBASE_API_KEY}`,
+            firebaseLookupUrl,
             {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ idToken })
+                method: "POST",
+
+                headers: {
+                    "Content-Type": "application/json"
+                },
+
+                body: JSON.stringify({
+                    idToken
+                })
             }
         );
+
         const lookupData = await lookupRes.json();
-        if (!lookupRes.ok || !lookupData.users || !lookupData.users[0]) {
-            return res.status(401).json({ ok: false, error: 'Sesi tidak valid, silakan login ulang.' });
+
+        if (
+            !lookupRes.ok ||
+            !lookupData.users ||
+            !lookupData.users[0] ||
+            !lookupData.users[0].localId
+        ) {
+
+            console.error(
+                "[YN AI] Firebase token verification failed:",
+                lookupRes.status,
+                lookupData?.error?.message || "Unknown Firebase error"
+            );
+
+            return res.status(401).json({
+                ok: false,
+                error: "Sesi tidak valid, silakan login ulang."
+            });
         }
+
         verifiedUid = lookupData.users[0].localId;
+
     } catch (err) {
-        console.error('Firebase token verification error:', err);
-        return res.status(401).json({ ok: false, error: 'Sesi tidak valid, silakan login ulang.' });
+
+        console.error(
+            "[YN AI] Firebase token verification error:",
+            err?.message || err
+        );
+
+        return res.status(401).json({
+            ok: false,
+            error: "Sesi tidak valid, silakan login ulang."
+        });
     }
 
-    // --- 2) Ambil & validasi payload dari frontend ---
+    // --------------------------------------------------------
+    // 4. READ REQUEST BODY
+    // --------------------------------------------------------
+
     const body = req.body || {};
-    const { message, history, context, clientUserId } = body;
 
-    if (!message || typeof message !== 'string' || !message.trim()) {
-        return res.status(400).json({ ok: false, error: 'Pesan kosong.' });
+    const {
+        message,
+        history,
+        context,
+        clientUserId
+    } = body;
+
+    // --------------------------------------------------------
+    // 5. VALIDATE MESSAGE
+    // --------------------------------------------------------
+
+    if (
+        !message ||
+        typeof message !== "string" ||
+        !message.trim()
+    ) {
+
+        return res.status(400).json({
+            ok: false,
+            error: "Pesan kosong."
+        });
     }
+
+    // --------------------------------------------------------
+    // 6. UID MATCH
+    // --------------------------------------------------------
+
     if (clientUserId !== verifiedUid) {
-        // Defense-in-depth: uid dari token harus sama dengan uid yang diklaim frontend
-        return res.status(403).json({ ok: false, error: 'Akses ditolak.' });
+
+        console.error(
+            "[YN AI] UID mismatch."
+        );
+
+        return res.status(403).json({
+            ok: false,
+            error: "Akses ditolak."
+        });
     }
+
+    // --------------------------------------------------------
+    // 7. SAFE CONTEXT
+    // --------------------------------------------------------
 
     const safeContext = {
-        today: (context && context.today) || new Date().toISOString().slice(0, 10),
-        accounts: Array.isArray(context && context.accounts) ? context.accounts : [],
-        goals: Array.isArray(context && context.goals) ? context.goals : [],
-        financialSummary: (context && context.financialSummary) || null
+        today:
+            context &&
+            context.today
+                ? context.today
+                : new Date().toISOString().slice(0, 10),
+
+        accounts:
+            context &&
+            Array.isArray(context.accounts)
+                ? context.accounts
+                : [],
+
+        goals:
+            context &&
+            Array.isArray(context.goals)
+                ? context.goals
+                : [],
+
+        financialSummary:
+            context &&
+            context.financialSummary
+                ? context.financialSummary
+                : null
     };
 
-    const safeHistory = Array.isArray(history) ? history.slice(-8) : [];
+    // Batasi history supaya request tetap kecil.
+    const safeHistory =
+        Array.isArray(history)
+            ? history.slice(-8)
+            : [];
 
-    // --- 3) Susun system prompt ---
-    const systemPrompt = buildSystemPrompt(safeContext);
+    // --------------------------------------------------------
+    // 8. SYSTEM PROMPT
+    // --------------------------------------------------------
+
+    const systemPrompt =
+        buildSystemPrompt(safeContext);
 
     const messages = [
-        { role: 'system', content: systemPrompt },
+        {
+            role: "system",
+            content: systemPrompt
+        },
+
         ...safeHistory
-            .filter(h => h && (h.role === 'user' || h.role === 'assistant') && typeof h.content === 'string')
-            .map(h => ({ role: h.role, content: h.content })),
-        { role: 'user', content: message }
+            .filter(
+                (item) =>
+                    item &&
+                    (
+                        item.role === "user" ||
+                        item.role === "assistant"
+                    ) &&
+                    typeof item.content === "string"
+            )
+            .map(
+                (item) => ({
+                    role: item.role,
+                    content: item.content
+                })
+            ),
+
+        {
+            role: "user",
+            content: message.trim()
+        }
     ];
 
-    // --- 4) Panggil OpenAI ---
+    // --------------------------------------------------------
+    // 9. OPENAI REQUEST
+    // --------------------------------------------------------
+
     try {
-        const aiRes = await fetch('https://api.openai.com/v1/chat/completions', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`
-            },
-            body: JSON.stringify({
-                model: 'gpt-4o-mini',
-                temperature: 0.2,
-                response_format: { type: 'json_object' },
-                messages
-            })
-        });
+
+        console.log(
+            "[YN AI] Sending request to OpenAI:",
+            {
+                model: OPENAI_MODEL,
+                messageLength: message.length,
+                historyLength: safeHistory.length
+            }
+        );
+
+        const aiRes = await fetch(
+            "https://api.openai.com/v1/chat/completions",
+            {
+                method: "POST",
+
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": `Bearer ${OPENAI_API_KEY}`
+                },
+
+                body: JSON.stringify({
+                    model: OPENAI_MODEL,
+                    temperature: 0.2,
+                    response_format: {
+                        type: "json_object"
+                    },
+                    messages
+                })
+            }
+        );
+
+        // ----------------------------------------------------
+        // 10. HANDLE OPENAI ERROR
+        // ----------------------------------------------------
 
         if (!aiRes.ok) {
-            const errText = await aiRes.text();
-            console.error('OpenAI API error:', aiRes.status, errText);
-            return res.status(502).json({ ok: false, error: 'YN AI sedang mengalami gangguan. Coba beberapa saat lagi.' });
+
+            let errorData = null;
+            let errorText = "";
+
+            try {
+                errorData = await aiRes.json();
+            } catch {
+                try {
+                    errorText = await aiRes.text();
+                } catch {
+                    errorText = "";
+                }
+            }
+
+            const openAIError =
+                errorData?.error || {};
+
+            console.error(
+                "[YN AI] OpenAI API error:",
+                {
+                    status: aiRes.status,
+                    type: openAIError.type || null,
+                    code: openAIError.code || null,
+                    message: openAIError.message || errorText || null,
+                    model: OPENAI_MODEL
+                }
+            );
+
+            // Jangan pernah mengirim detail secret ke frontend.
+            return res.status(502).json({
+                ok: false,
+                error: "YN AI sedang mengalami gangguan. Coba beberapa saat lagi.",
+                debug:
+                    process.env.NODE_ENV === "production"
+                        ? undefined
+                        : {
+                            stage: "openai",
+                            status: aiRes.status,
+                            type: openAIError.type || null,
+                            code: openAIError.code || null
+                        }
+            });
         }
 
-        const aiData = await aiRes.json();
-        const rawText = aiData?.choices?.[0]?.message?.content || '';
+        // ----------------------------------------------------
+        // 11. PARSE OPENAI RESPONSE
+        // ----------------------------------------------------
 
-        let parsed;
-        try {
-            parsed = JSON.parse(rawText);
-        } catch (parseErr) {
-            console.error('Gagal parse JSON dari OpenAI:', rawText);
+        const aiData = await aiRes.json();
+
+        const rawText =
+            aiData?.choices?.[0]?.message?.content || "";
+
+        if (!rawText) {
+
+            console.error(
+                "[YN AI] OpenAI returned empty content."
+            );
+
             return res.status(200).json({
                 ok: true,
+
                 data: {
-                    intent: 'clarification',
-                    answer: 'Maaf, aku belum bisa memahami itu. Coba tulis seperti: "beli makan 25 ribu pakai cash".',
+                    intent: "clarification",
+
+                    answer:
+                        "Maaf, aku belum mendapat jawaban dari AI. Coba kirim lagi ya.",
+
                     requires_confirmation: false
                 }
             });
         }
 
-        return res.status(200).json({ ok: true, data: parsed });
+        // ----------------------------------------------------
+        // 12. PARSE JSON
+        // ----------------------------------------------------
+
+        let parsed;
+
+        try {
+
+            parsed = JSON.parse(rawText);
+
+        } catch (parseErr) {
+
+            console.error(
+                "[YN AI] Failed to parse OpenAI JSON:",
+                {
+                    error: parseErr?.message || parseErr
+                }
+            );
+
+            return res.status(200).json({
+                ok: true,
+
+                data: {
+                    intent: "clarification",
+
+                    answer:
+                        'Maaf, aku belum bisa memahami itu. Coba tulis seperti "beli makan 25 ribu pakai cash".',
+
+                    requires_confirmation: false
+                }
+            });
+        }
+
+        // ----------------------------------------------------
+        // 13. SUCCESS
+        // ----------------------------------------------------
+
+        return res.status(200).json({
+            ok: true,
+            data: parsed
+        });
+
     } catch (err) {
-        console.error('AI chat handler error:', err);
-        return res.status(500).json({ ok: false, error: 'YN AI sedang mengalami gangguan. Coba beberapa saat lagi.' });
+
+        console.error(
+            "[YN AI] Handler error:",
+            {
+                message: err?.message || String(err),
+                name: err?.name || null
+            }
+        );
+
+        return res.status(500).json({
+            ok: false,
+            error: "YN AI sedang mengalami gangguan. Coba beberapa saat lagi."
+        });
     }
 };
 
+// ============================================================
+// SYSTEM PROMPT
+// ============================================================
+
 function buildSystemPrompt(ctx) {
-    const accountNames = ctx.accounts.map(a => a.name);
-    const goalList = ctx.goals.map(g => `${g.id}:${g.name}`);
 
-    return `Kamu adalah YN AI, asisten keuangan pribadi di aplikasi YN WALLET. Kamu berbicara Bahasa Indonesia sehari-hari, ramah, singkat, dan Gen Z tapi tetap sopan.
+    const accountNames =
+        ctx.accounts
+            .map((account) => account?.name)
+            .filter(Boolean);
 
-TUGAS UTAMA kamu adalah mengubah kalimat natural dari user menjadi DRAFT terstruktur (JSON) tentang transaksi/goal, ATAU menjawab pertanyaan finansial memakai data ringkasan yang sudah disediakan. Kamu TIDAK PERNAH menyimpan apa pun ke database — kamu hanya membuat draft, user yang akan konfirmasi manual.
+    const goalList =
+        ctx.goals
+            .map(
+                (goal) =>
+                    `${goal?.id || ""}:${goal?.name || ""}`
+            )
+            .filter(
+                (value) => value !== ":"
+            );
 
-DATA YANG TERSEDIA UNTUK USER INI (jangan pernah mengarang di luar ini):
-- Tanggal hari ini: ${ctx.today}
-- Akun/aset yang tersedia: ${accountNames.length ? accountNames.join(', ') : '(belum ada akun tersimpan)'}
-- Goal yang sudah ada (format id:nama): ${goalList.length ? goalList.join(', ') : '(belum ada goal)'}
-- Ringkasan keuangan (sudah dihitung oleh aplikasi, JANGAN dihitung ulang, JANGAN diragukan, gunakan apa adanya kalau relevan menjawab pertanyaan): ${ctx.financialSummary ? JSON.stringify(ctx.financialSummary) : '(tidak tersedia)'}
+    return `
+Kamu adalah YN AI, asisten keuangan pribadi di aplikasi YN WALLET.
 
-KATEGORI EXPENSE yang valid: ${EXPENSE_CATEGORIES.join(', ')}
-KATEGORI INCOME yang valid: ${INCOME_CATEGORIES.join(', ')}
-Kalau kategori tidak jelas/tidak cocok, pakai "Lainnya". Jangan membuat kategori baru.
+Kamu berbicara Bahasa Indonesia sehari-hari, ramah, singkat, dan Gen Z tetapi tetap sopan.
+
+TUGAS UTAMA:
+
+1. Mengubah bahasa natural user menjadi DRAFT transaksi/goal terstruktur.
+2. Menjawab pertanyaan finansial berdasarkan ringkasan keuangan yang diberikan.
+3. Kamu TIDAK PERNAH menyimpan data ke database.
+4. User harus mengonfirmasi draft terlebih dahulu.
+
+DATA USER:
+
+Tanggal hari ini:
+${ctx.today}
+
+Akun/aset yang tersedia:
+${
+    accountNames.length
+        ? accountNames.join(", ")
+        : "(belum ada akun tersimpan)"
+}
+
+Goal yang sudah ada:
+${
+    goalList.length
+        ? goalList.join(", ")
+        : "(belum ada goal)"
+}
+
+Ringkasan keuangan:
+${
+    ctx.financialSummary
+        ? JSON.stringify(ctx.financialSummary)
+        : "(tidak tersedia)"
+}
+
+KATEGORI EXPENSE YANG VALID:
+
+${EXPENSE_CATEGORIES.join(", ")}
+
+KATEGORI INCOME YANG VALID:
+
+${INCOME_CATEGORIES.join(", ")}
+
+Jika kategori tidak jelas atau tidak cocok, gunakan "Lainnya".
 
 ATURAN PENTING:
-1. Kalau user menyebut akun yang TIDAK ADA di daftar akun di atas, JANGAN menerimanya begitu saja sebagai akun valid — anggap "account" tetap null dan minta klarifikasi lewat missing_fields, atau kalau perlu jelaskan lewat "answer" bahwa akun itu belum terdaftar.
-2. JANGAN PERNAH menebak akun kalau user tidak menyebutkannya. Masukkan "account": null dan tambahkan "account" ke missing_fields.
-3. JANGAN PERNAH menebak nominal. Kalau nominal tidak disebutkan jelas (mis. "lumayan mahal"), jangan buat transaksi — pakai intent "clarification" dan tanyakan nominalnya.
-4. Bedakan dengan tepat: expense (keluar uang untuk kebutuhan), income (uang masuk/gaji/pendapatan), transfer (pindah uang antar akun milik sendiri, TIDAK mempengaruhi net worth, WAJIB ada fromAccount dan toAccount berbeda), goal_contribution (uang dialokasikan dari akun ke goal yang SUDAH ADA — ini BUKAN expense dan BUKAN income).
-5. Untuk goal_contribution, cari goalId dari daftar goal yang tersedia berdasarkan nama yang disebut user (gunakan pencocokan nama yang masuk akal). Kalau goal yang dimaksud tidak ditemukan di daftar, jelaskan lewat "answer" bahwa goal itu belum ada dan sarankan membuat goal baru dulu.
-6. Untuk permintaan goal baru (create_goal), JANGAN langsung membuatnya — buat draft dengan estimated_monthly_saving = target dibagi jumlah bulan sampai deadline (dibulatkan), lalu user akan menekan tombol "Buat Goal" sendiri di frontend.
-7. Tanggal: pahami bahasa natural ("kemarin", "tanggal 15", "bulan lalu") relatif terhadap hari ini (${ctx.today}) dan hasilkan format YYYY-MM-DD. Kalau ambigu, tanyakan lewat clarification.
-8. Untuk pertanyaan finansial (financial_question), jawab HANYA berdasarkan ringkasan keuangan yang diberikan di atas. Jangan mengarang angka. Kalau data yang dibutuhkan tidak ada di ringkasan, katakan kamu belum bisa menghitungnya.
-9. Jangan pernah memberi rekomendasi investasi atau keputusan finansial berisiko. Untuk pertanyaan "apakah aku bisa beli X", berikan estimasi sederhana berbasis angka yang tersedia saja, dan sebutkan itu hanya estimasi kasar.
-10. Percakapan bisa berlanjut dari histori sebelumnya — misalnya kalau kamu baru saja menanyakan akun dan user membalas cuma "cash", pahami itu sebagai jawaban dari pertanyaan sebelumnya dan gabungkan dengan draft transaksi yang tadi belum lengkap.
 
-FORMAT OUTPUT — WAJIB HANYA JSON VALID, TANPA TEKS LAIN, TANPA MARKDOWN, sesuai salah satu bentuk berikut:
+1. Jika user menyebut akun yang TIDAK ADA dalam daftar akun user, jangan menganggapnya valid.
 
-Untuk transaksi (expense/income/transfer/goal_contribution):
+2. Jangan pernah menebak akun.
+
+Jika akun tidak disebutkan:
+"account": null
+
+dan masukkan:
+"account"
+
+ke dalam missing_fields.
+
+3. Jangan pernah menebak nominal.
+
+Jika nominal tidak jelas, gunakan intent clarification.
+
+4. Bedakan:
+
+expense
+= uang keluar untuk kebutuhan.
+
+income
+= uang masuk / pendapatan.
+
+transfer
+= perpindahan uang antar akun milik sendiri dan tidak mengubah net worth.
+
+goal_contribution
+= uang dialokasikan dari akun ke goal yang sudah ada.
+
+5. Untuk goal_contribution, cari goalId berdasarkan daftar goal yang tersedia.
+
+Jika goal tidak ditemukan, jelaskan bahwa goal tersebut belum ada.
+
+6. Untuk goal baru:
+
+Gunakan intent:
+"create_goal"
+
+Jangan langsung menyimpan goal.
+
+Hitung:
+estimated_monthly_saving =
+target dibagi jumlah bulan sampai deadline.
+
+Bulatkan hasilnya.
+
+7. Pahami tanggal natural seperti:
+
+"hari ini"
+"kemarin"
+"tanggal 15"
+"bulan lalu"
+
+Gunakan tanggal hari ini sebagai referensi:
+
+${ctx.today}
+
+Hasil tanggal harus:
+
+YYYY-MM-DD
+
+Jika ambigu, gunakan clarification.
+
+8. Untuk financial_question:
+
+Gunakan HANYA data financialSummary.
+
+Jangan mengarang angka.
+
+9. Jangan memberikan rekomendasi investasi berisiko.
+
+10. Percakapan dapat menggunakan histori sebelumnya.
+
+Contoh:
+
+AI:
+"Akun mana yang dipakai?"
+
+User:
+"cash"
+
+Pahami "cash" sebagai jawaban terhadap pertanyaan sebelumnya jika histori mendukung.
+
+FORMAT OUTPUT:
+
+WAJIB JSON VALID.
+
+JANGAN menggunakan Markdown.
+
+JANGAN memberikan teks di luar JSON.
+
+UNTUK TRANSAKSI:
+
 {
   "intent": "create_transaction",
   "transaction": {
@@ -207,12 +649,13 @@ Untuk transaksi (expense/income/transfer/goal_contribution):
     "description": string,
     "date": "YYYY-MM-DD"
   },
-  "missing_fields": string[],
+  "missing_fields": [],
   "confidence": number,
   "reply": string
 }
 
-Untuk goal baru:
+UNTUK GOAL BARU:
+
 {
   "intent": "create_goal",
   "goal": {
@@ -225,19 +668,24 @@ Untuk goal baru:
   "reply": string
 }
 
-Untuk pertanyaan finansial:
+UNTUK PERTANYAAN FINANSIAL:
+
 {
   "intent": "financial_question",
   "answer": string,
   "requires_confirmation": false
 }
 
-Untuk klarifikasi / info kurang / tidak paham:
+UNTUK KLARIFIKASI:
+
 {
   "intent": "clarification",
   "answer": string,
   "requires_confirmation": false
 }
 
-"reply" dan "answer" harus dalam Bahasa Indonesia santai, singkat (maks 2 kalimat), dan ramah. Jangan pernah membalas selain format JSON di atas.`;
+"reply" dan "answer" harus Bahasa Indonesia santai, singkat, maksimal 2 kalimat.
+
+Jangan pernah membalas selain JSON valid.
+`;
 }
