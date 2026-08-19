@@ -214,48 +214,48 @@
                 <span class="text-[10px] font-medium">Assets</span>
             </button>
         </nav>
+    </div>
 
-        <!-- YN AI FLOATING BUTTON -->
-        <button onclick="toggleAiPanel()" class="fixed bottom-24 right-4 md:bottom-6 md:right-6 z-40 w-14 h-14 rounded-full bg-gradient-to-tr from-brand-600 to-pink-400 text-white flex items-center justify-center text-2xl shadow-xl shadow-pink-300/60 active:scale-90 transition-transform">
-            ✨
-        </button>
+    <!-- YN AI FLOATING BUTTON (di luar wrapper overflow-hidden supaya "fixed" tidak ke-clip) -->
+    <button onclick="toggleAiPanel()" class="fixed bottom-24 right-4 md:bottom-6 md:right-6 z-40 w-14 h-14 rounded-full bg-gradient-to-tr from-brand-600 to-pink-400 text-white flex items-center justify-center text-2xl shadow-xl shadow-pink-300/60 active:scale-90 transition-transform">
+        ✨
+    </button>
 
-        <!-- YN AI CHAT PANEL -->
-        <div id="ai-panel" class="hidden fixed inset-0 md:inset-auto md:bottom-6 md:right-6 md:w-96 md:h-[600px] md:max-h-[85vh] z-50 flex-col bg-[#fff8fa] md:rounded-3xl shadow-2xl border border-pink-100 overflow-hidden">
-            <!-- Header -->
-            <div class="flex items-center justify-between px-5 py-4 bg-gradient-to-r from-brand-600 to-pink-400 text-white flex-shrink-0">
-                <div>
-                    <p class="font-extrabold text-sm">✨ YN AI</p>
-                    <p class="text-[11px] text-white/80">Your personal money assistant</p>
-                </div>
-                <button onclick="toggleAiPanel()" class="w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center transition-colors">
-                    <i class="fa-solid fa-xmark"></i>
-                </button>
+    <!-- YN AI CHAT PANEL -->
+    <div id="ai-panel" class="hidden fixed inset-0 md:inset-auto md:bottom-6 md:right-6 md:w-96 md:h-[600px] md:max-h-[85vh] z-50 flex-col bg-[#fff8fa] md:rounded-3xl shadow-2xl border border-pink-100 overflow-hidden">
+        <!-- Header -->
+        <div class="flex items-center justify-between px-5 py-4 bg-gradient-to-r from-brand-600 to-pink-400 text-white flex-shrink-0">
+            <div>
+                <p class="font-extrabold text-sm">✨ YN AI</p>
+                <p class="text-[11px] text-white/80">Your personal money assistant</p>
             </div>
-
-            <!-- Messages -->
-            <div id="ai-messages" class="flex-1 overflow-y-auto p-4 space-y-3 hide-scrollbar"></div>
-
-            <!-- Quick Prompts -->
-            <div class="flex gap-2 overflow-x-auto px-4 pb-2 hide-scrollbar flex-shrink-0">
-                <button onclick="sendAiQuickPrompt('Catat pengeluaran: ')" class="whitespace-nowrap px-3 py-1.5 rounded-full bg-white border border-pink-100 text-slate-600 text-xs font-semibold shadow-sm">💸 Catat Pengeluaran</button>
-                <button onclick="sendAiQuickPrompt('Catat pemasukan: ')" class="whitespace-nowrap px-3 py-1.5 rounded-full bg-white border border-pink-100 text-slate-600 text-xs font-semibold shadow-sm">💰 Catat Pemasukan</button>
-                <button onclick="sendAiQuickPrompt('Transfer ')" class="whitespace-nowrap px-3 py-1.5 rounded-full bg-white border border-pink-100 text-slate-600 text-xs font-semibold shadow-sm">🔄 Transfer</button>
-                <button onclick="sendAiQuickPrompt('Aku mau bikin goal baru: ')" class="whitespace-nowrap px-3 py-1.5 rounded-full bg-white border border-pink-100 text-slate-600 text-xs font-semibold shadow-sm">🎯 Tambah Goal</button>
-                <button onclick="sendAiQuickPrompt('Berapa pengeluaran aku bulan ini?')" class="whitespace-nowrap px-3 py-1.5 rounded-full bg-white border border-pink-100 text-slate-600 text-xs font-semibold shadow-sm">📊 Cek Keuangan</button>
-            </div>
-
-            <!-- Input -->
-            <form id="form-ai" onsubmit="handleAiSubmit(event)" class="flex items-center gap-2 p-3 border-t border-pink-100 bg-white flex-shrink-0" style="padding-bottom: max(0.75rem, env(safe-area-inset-bottom));">
-                <button type="button" id="ai-mic-btn" onclick="startAiVoiceInput()" class="hidden w-9 h-9 flex-shrink-0 rounded-full bg-pink-50 text-slate-500 flex items-center justify-center hover:bg-pink-100 transition-colors">
-                    <i class="fa-solid fa-microphone"></i>
-                </button>
-                <input id="ai-input" type="text" autocomplete="off" placeholder="Tulis pesan..." class="flex-1 min-w-0 px-4 py-2.5 rounded-full bg-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-brand-300">
-                <button type="submit" id="ai-send-btn" class="w-9 h-9 flex-shrink-0 rounded-full bg-brand-500 text-white flex items-center justify-center hover:bg-brand-600 disabled:opacity-60 transition-colors">
-                    <i class="fa-solid fa-paper-plane text-sm"></i>
-                </button>
-            </form>
+            <button onclick="toggleAiPanel()" class="w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center transition-colors">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
         </div>
+
+        <!-- Messages -->
+        <div id="ai-messages" class="flex-1 overflow-y-auto p-4 space-y-3 hide-scrollbar"></div>
+
+        <!-- Quick Prompts -->
+        <div class="flex gap-2 overflow-x-auto px-4 pb-2 hide-scrollbar flex-shrink-0">
+            <button onclick="sendAiQuickPrompt('Catat pengeluaran: ')" class="whitespace-nowrap px-3 py-1.5 rounded-full bg-white border border-pink-100 text-slate-600 text-xs font-semibold shadow-sm">💸 Catat Pengeluaran</button>
+            <button onclick="sendAiQuickPrompt('Catat pemasukan: ')" class="whitespace-nowrap px-3 py-1.5 rounded-full bg-white border border-pink-100 text-slate-600 text-xs font-semibold shadow-sm">💰 Catat Pemasukan</button>
+            <button onclick="sendAiQuickPrompt('Transfer ')" class="whitespace-nowrap px-3 py-1.5 rounded-full bg-white border border-pink-100 text-slate-600 text-xs font-semibold shadow-sm">🔄 Transfer</button>
+            <button onclick="sendAiQuickPrompt('Aku mau bikin goal baru: ')" class="whitespace-nowrap px-3 py-1.5 rounded-full bg-white border border-pink-100 text-slate-600 text-xs font-semibold shadow-sm">🎯 Tambah Goal</button>
+            <button onclick="sendAiQuickPrompt('Berapa pengeluaran aku bulan ini?')" class="whitespace-nowrap px-3 py-1.5 rounded-full bg-white border border-pink-100 text-slate-600 text-xs font-semibold shadow-sm">📊 Cek Keuangan</button>
+        </div>
+
+        <!-- Input -->
+        <form id="form-ai" onsubmit="handleAiSubmit(event)" class="flex items-center gap-2 p-3 border-t border-pink-100 bg-white flex-shrink-0" style="padding-bottom: max(0.75rem, env(safe-area-inset-bottom));">
+            <button type="button" id="ai-mic-btn" onclick="startAiVoiceInput()" class="hidden w-9 h-9 flex-shrink-0 rounded-full bg-pink-50 text-slate-500 flex items-center justify-center hover:bg-pink-100 transition-colors">
+                <i class="fa-solid fa-microphone"></i>
+            </button>
+            <input id="ai-input" type="text" autocomplete="off" placeholder="Tulis pesan..." class="flex-1 min-w-0 px-4 py-2.5 rounded-full bg-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-brand-300">
+            <button type="submit" id="ai-send-btn" class="w-9 h-9 flex-shrink-0 rounded-full bg-brand-500 text-white flex items-center justify-center hover:bg-brand-600 disabled:opacity-60 transition-colors">
+                <i class="fa-solid fa-paper-plane text-sm"></i>
+            </button>
+        </form>
     </div>
 
     </div> <!-- /#app-shell -->
