@@ -325,7 +325,11 @@ window.handleAiSubmit = async function(e) {
 
         if (!res.ok || !payload || !payload.ok) {
             const errMsg = (payload && payload.error) || 'YN AI sedang mengalami gangguan. Coba beberapa saat lagi.';
-            renderAssistantBubble(errMsg);
+            // DEBUG SEMENTARA: tampilkan alasan asli dari server kalau ada,
+            // supaya kelihatan langsung di chat. Hapus baris ini setelah
+            // masalah beres (lihat juga api/ai/chat.js).
+            const debugMsg = payload && payload.debug ? `\n\n[debug] ${payload.debug}` : '';
+            renderAssistantBubble(errMsg + debugMsg);
             return;
         }
 

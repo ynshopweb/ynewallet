@@ -139,7 +139,15 @@ module.exports = async function handler(req, res) {
         if (!aiRes.ok) {
             const errText = await aiRes.text();
             console.error('Gemini API error:', aiRes.status, errText);
-            return res.status(502).json({ ok: false, error: 'YN AI sedang mengalami gangguan. Coba beberapa saat lagi.' });
+            // DEBUG SEMENTARA: sisipkan alasan asli (key sudah di-redact) supaya
+            // kelihatan langsung di chat, tanpa perlu buka Vercel logs. Hapus
+            // baris `debug` ini setelah masalah beres.
+            const safeErr = errText.replace(new RegExp(process.env.GEMINI_API_KEY, 'g'), '[REDACTED]').slice(0, 500);
+            return res.status(502).json({
+                ok: false,
+                error: 'YN AI sedang mengalami gangguan. Coba beberapa saat lagi.',
+                debug: `HTTP ${aiRes.status} — ${safeErr}`
+            });
         }
 
         const aiData = await aiRes.json();
@@ -179,7 +187,11 @@ module.exports = async function handler(req, res) {
         return res.status(200).json({ ok: true, data: parsed });
     } catch (err) {
         console.error('AI chat handler error:', err);
-        return res.status(500).json({ ok: false, error: 'YN AI sedang mengalami gangguan. Coba beberapa saat lagi.' });
+        return res.status(500).json({
+            ok: false,
+            error: 'YN AI sedang mengalami gangguan. Coba beberapa saat lagi.',
+            debug: `${err.name || 'Error'}: ${err.message || String(err)}`
+        });
     }
 };
 

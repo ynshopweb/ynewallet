@@ -79,7 +79,7 @@ menyimpannya.
 ```
 api/
   └── ai/
-      └── chat.js          Vercel Serverless Function — otak YN AI (OpenAI),
+      └── chat.js          Vercel Serverless Function — otak YN AI (Gemini),
                             girang jalan HANYA di server, verifikasi
                             Firebase ID Token, tidak pernah menulis ke
                             Firestore
@@ -103,7 +103,7 @@ js/ai-chat.js  → kirim { message, history, context, clientUserId }
                  + Firebase ID Token (Authorization: Bearer ...)
       ↓
 api/ai/chat.js → verifikasi ID Token ke Firebase (server-side)
-               → panggil OpenAI (API key HANYA di server)
+               → panggil Gemini (API key HANYA di server)
                → balikin draft terstruktur (JSON), TIDAK menulis Firestore
       ↓
 js/ai-chat.js  → render draft card [Batal] [Simpan]
@@ -122,9 +122,9 @@ user. Kalau informasi kurang, AI akan bertanya balik dulu.
 
 ### Setup sebelum deploy
 
-1. Punya API key dari [platform.openai.com](https://platform.openai.com/api-keys).
+1. Punya API key dari [Google AI Studio](https://aistudio.google.com/apikey).
 2. Di **Vercel → Project Settings → Environment Variables**, tambahkan:
-   - `OPENAI_API_KEY` = API key OpenAI kamu (lihat `.env.example`)
+   - `GEMINI_API_KEY` = API key Gemini kamu (lihat `.env.example`)
 3. Redeploy project (env var baru baru aktif setelah deploy ulang).
 4. Untuk testing lokal, install [Vercel CLI](https://vercel.com/docs/cli)
    lalu jalankan `vercel dev` (ini juga menjalankan `/api/ai/chat.js`
