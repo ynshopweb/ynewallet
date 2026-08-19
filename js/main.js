@@ -10,6 +10,9 @@
  * (baik user sudah login maupun belum), auth.js yang menampilkan
  * #app-shell atau #auth-screen lalu memanggil window.renderCurrentTab().
  *
+ * ai-chat.js (fitur YN AI) diimpor terakhir karena tidak ada modul
+ * lain yang bergantung padanya.
+ *
  * Urutan import di bawah tidak memengaruhi urutan eksekusi modul
  * (ES Modules otomatis resolve dependency graph-nya), disusun
  * begini hanya supaya mudah dibaca sesuai alur aplikasi.
@@ -22,3 +25,4 @@ import './render.js';
 import './modals.js';
 import './form-handlers.js';
 import './crud-actions.js';
+import './ai-chat.js';

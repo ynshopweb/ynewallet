@@ -66,6 +66,81 @@ Firebase, bukan secret) — yang benar-benar menjaga keamanan data adalah
 Firestore Security Rules di atas, jadi jangan sampai rules-nya kelewatan
 di-set ke `allow read, write: if true`.
 
+## YN AI — asisten keuangan via chat
+
+Fitur baru: tombol mengambang **✨ YN AI** (kanan bawah, hanya muncul
+setelah login) yang membuka chat panel. User bisa mengetik bahasa
+natural seperti *"tadi makan ayam 25 ribu pakai cash"*, dan YN AI akan
+menampilkan **draft** transaksi untuk dikonfirmasi — bukan langsung
+menyimpannya.
+
+### File yang terlibat
+
+```
+api/
+  └── ai/
+      └── chat.js          Vercel Serverless Function — otak YN AI (OpenAI),
+                            girang jalan HANYA di server, verifikasi
+                            Firebase ID Token, tidak pernah menulis ke
+                            Firestore
+js/
+  ├── ai-context.js         Hitung ringkasan keuangan kecil (bukan
+                             seluruh database) untuk dikirim sebagai
+                             context ke AI
+  └── ai-chat.js             UI chat, kirim/terima pesan, render draft
+                              card, dan penyimpanan draft ke Firestore
+                              (logika simpan sengaja ditulis mengikuti
+                              persis form-handlers.js supaya perilakunya
+                              identik dengan input manual)
+```
+
+### Alur data (WAJIB dipahami sebelum ubah-ubah)
+
+```
+User mengetik di chat
+      ↓
+js/ai-chat.js  → kirim { message, history, context, clientUserId }
+                 + Firebase ID Token (Authorization: Bearer ...)
+      ↓
+api/ai/chat.js → verifikasi ID Token ke Firebase (server-side)
+               → panggil OpenAI (API key HANYA di server)
+               → balikin draft terstruktur (JSON), TIDAK menulis Firestore
+      ↓
+js/ai-chat.js  → render draft card [Batal] [Simpan]
+      ↓
+User klik "Simpan" / "Buat Goal"
+      ↓
+js/ai-chat.js  → window.appState diubah + window.saveState()
+               → (jalur yang SAMA dengan form manual: localStorage +
+                  Firestore users/{uid}/app_data/main)
+```
+
+AI **tidak pernah** mengarang akun atau goal yang tidak ada — daftar
+akun & goal milik user dikirim sebagai context, dan system prompt di
+`api/ai/chat.js` melarang AI menebak akun/nominal yang tidak disebutkan
+user. Kalau informasi kurang, AI akan bertanya balik dulu.
+
+### Setup sebelum deploy
+
+1. Punya API key dari [platform.openai.com](https://platform.openai.com/api-keys).
+2. Di **Vercel → Project Settings → Environment Variables**, tambahkan:
+   - `OPENAI_API_KEY` = API key OpenAI kamu (lihat `.env.example`)
+3. Redeploy project (env var baru baru aktif setelah deploy ulang).
+4. Untuk testing lokal, install [Vercel CLI](https://vercel.com/docs/cli)
+   lalu jalankan `vercel dev` (ini juga menjalankan `/api/ai/chat.js`
+   sebagai serverless function lokal, tidak cukup pakai
+   `python3 -m http.server` karena itu tidak menjalankan API routes).
+
+### Batasan model saat ini (v1)
+
+- Riwayat chat (`aiHistory`) hanya disimpan di memori tab browser saat
+  itu (maks 8 pesan terakhir dikirim sebagai context) — reload halaman
+  akan mengosongkan riwayat chat, tapi transaksi yang **sudah**
+  dikonfirmasi tetap tersimpan seperti biasa di Firestore.
+- Voice input pakai Web Speech API bawaan browser (Chrome/Edge paling
+  stabil); kalau browser tidak mendukung, tombol microphone otomatis
+  disembunyikan.
+
 ## Cara menjalankan
 
 File JS memakai ES Modules (`import`/`export`) dan `<script type="module">`
