@@ -54,5 +54,31 @@
             }
 
             window.renderCurrentTab();
+
+            // Tutup drawer sidebar mobile setiap kali pindah tab.
+            // Di desktop sidebar sudah "static" (bukan drawer) jadi ini tidak berefek apa pun.
+            window.closeSidebar();
+        };
+
+        // ---------- MOBILE SIDEBAR DRAWER ----------
+        // Murni UI toggle (buka/tutup drawer + backdrop), tidak menyentuh
+        // auth/routing/database. Sidebar di desktop tetap static seperti semula.
+        window.openSidebar = function() {
+            document.querySelector('aside').classList.remove('-translate-x-full');
+            document.getElementById('sidebar-backdrop').classList.remove('hidden');
+        };
+
+        window.closeSidebar = function() {
+            document.querySelector('aside').classList.add('-translate-x-full');
+            document.getElementById('sidebar-backdrop').classList.add('hidden');
+        };
+
+        window.toggleSidebar = function() {
+            const isOpen = !document.querySelector('aside').classList.contains('-translate-x-full');
+            if (isOpen) {
+                window.closeSidebar();
+            } else {
+                window.openSidebar();
+            }
         };
 
