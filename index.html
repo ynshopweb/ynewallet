@@ -49,7 +49,7 @@
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
     <link rel="stylesheet" href="css/style.css">
 </head>
-<body class="h-full text-slate-800 flex flex-col md:flex-row overflow-hidden bg-[#faf6f8]">
+<body class="h-full text-slate-800 overflow-hidden bg-[#faf6f8]">
 
     <!-- AUTH SCREEN (login / register) -->
     <div id="auth-screen" class="fixed inset-0 z-40 flex items-center justify-center p-4 bg-gradient-to-br from-brand-600 via-brand-500 to-pink-500">
@@ -86,7 +86,7 @@
     </div>
 
     <!-- APP SHELL (disembunyikan sampai user berhasil login; class "flex" ditambahkan/dilepas via JS di auth.js, jangan digabung statis dengan "hidden") -->
-    <div id="app-shell" class="hidden flex-col md:flex-row w-full h-full">
+    <div id="app-shell" class="hidden flex-col md:flex-row w-full h-full min-h-0">
 
     <!-- DESKTOP SIDEBAR -->
     <aside class="hidden md:flex flex-col w-64 bg-white border-r border-pink-100 z-20 flex-shrink-0 shadow-sm">
@@ -159,7 +159,7 @@
     </aside>
 
     <!-- MAIN CONTENT CONTAINER -->
-    <div class="flex-1 flex flex-col h-full overflow-hidden relative">
+    <div class="flex-1 flex flex-col h-full min-h-0 overflow-hidden relative">
         <!-- Top Navigation Bar -->
         <header class="bg-white/80 backdrop-blur-md border-b border-pink-100 px-4 md:px-8 py-3.5 flex items-center justify-between z-10">
             <div class="flex items-center gap-3">
@@ -185,7 +185,7 @@
         </header>
 
         <!-- Dynamic Main Scrollable View Area -->
-        <main id="main-view" class="flex-1 overflow-y-auto p-4 md:p-8 space-y-6 pb-24 md:pb-8">
+        <main id="main-view" class="flex-1 min-h-0 overflow-y-auto p-4 md:p-8 space-y-6 pb-24 md:pb-8">
             <!-- Dynamic Content Will Be Injected Here via Javascript -->
         </main>
 

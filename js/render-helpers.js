@@ -57,21 +57,41 @@
                 moneyFlowChartInstance.destroy();
             }
 
-            // Calculate mock 6 month dataset or actuals
+            // Bangun 6 bulan terakhir (termasuk bulan berjalan) murni dari window.appState.transactions.
+            // Bulan yang belum ada transaksinya otomatis 0 — tidak ada lagi angka dummy.
+            const monthNamesID = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Ags', 'Sep', 'Okt', 'Nov', 'Des'];
+            const now = new Date();
+            const months = [];
+            for (let i = 5; i >= 0; i--) {
+                const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+                months.push({ key: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`, label: monthNamesID[d.getMonth()] });
+            }
+
+            const incomeData = months.map(m =>
+                window.appState.transactions
+                    .filter(t => t.type === 'income' && t.date && t.date.startsWith(m.key))
+                    .reduce((s, t) => s + Number(t.amount), 0)
+            );
+            const expenseData = months.map(m =>
+                window.appState.transactions
+                    .filter(t => t.type === 'expense' && t.date && t.date.startsWith(m.key))
+                    .reduce((s, t) => s + Number(t.amount), 0)
+            );
+
             moneyFlowChartInstance = new Chart(ctx, {
                 type: 'bar',
                 data: {
-                    labels: ['Mei', 'Jun', 'Jul', 'Ags'],
+                    labels: months.map(m => m.label),
                     datasets: [
                         {
                             label: 'Income',
-                            data: [5000000, 5200000, 4800000, window.appState.transactions.filter(t=>t.type==='income').reduce((s,t)=>s+Number(t.amount),0)],
+                            data: incomeData,
                             backgroundColor: '#10b981',
                             borderRadius: 6
                         },
                         {
                             label: 'Expense',
-                            data: [3100000, 2900000, 3400000, window.appState.transactions.filter(t=>t.type==='expense').reduce((s,t)=>s+Number(t.amount),0)],
+                            data: expenseData,
                             backgroundColor: '#f43f5e',
                             borderRadius: 6
                         }
