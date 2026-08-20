@@ -64,7 +64,7 @@ window.handleAdminCreateUser = async function(e) {
             return;
         }
 
-        showToast(`User ${payload.email} berhasil dibuat. Mereka mulai dari Rp0 saat login pertama kali.`);
+        showToast(`User ${payload.email} berhasil dibuat & email verifikasi terkirim. Mereka mulai dari Rp0 setelah konfirmasi.`);
         document.getElementById('form-admin-add-user').reset();
         window.closeModal('modal-admin-add-user');
     } catch (err) {

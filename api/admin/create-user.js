@@ -28,10 +28,15 @@
  *   4. Baru setelah lolos, user baru dibuat lewat Identity Toolkit.
  *
  * Function ini SENGAJA tidak menulis apa pun ke Firestore untuk user
- * baru itu. Begitu user baru login pertama kali, js/auth.js yang akan
- * membuatkan dokumen data kosong (Rp0, tanpa transaksi/goal apa pun)
- * secara otomatis — jadi tidak ada dua tempat berbeda yang perlu
- * dijaga konsisten soal "state awal user baru itu apa".
+ * baru itu. Begitu user baru login pertama kali (dan email-nya sudah
+ * dikonfirmasi), js/auth.js yang akan membuatkan dokumen data kosong
+ * (Rp0, tanpa transaksi/goal apa pun) secara otomatis — jadi tidak ada
+ * dua tempat berbeda yang perlu dijaga konsisten soal "state awal user
+ * baru itu apa".
+ *
+ * Email verifikasi juga otomatis dikirim ke user baru (lihat bagian
+ * accounts:sendOobCode di bawah) karena aplikasi ini mewajibkan email
+ * terverifikasi sebelum bisa masuk Dashboard.
  * ------------------------------------------------------------
  */
 
@@ -123,9 +128,30 @@ module.exports = async function handler(req, res) {
             return res.status(400).json({ ok: false, error: friendly[code] || 'Gagal membuat user baru.' });
         }
 
-        // Token hasil signUp untuk user BARU sengaja tidak dipakai untuk apa
-        // pun (tidak disimpan, tidak dikembalikan ke frontend) — sesi admin
-        // yang sedang login di browser sama sekali tidak terpengaruh.
+        // Sekarang aplikasi WAJIB email terverifikasi sebelum bisa masuk
+        // Dashboard (lihat js/auth.js). Karena user ini dibuat lewat REST
+        // API server-side (bukan SDK), Firebase TIDAK otomatis mengirim
+        // email verifikasi seperti saat user daftar sendiri di form —
+        // jadi kita kirim manual di sini lewat accounts:sendOobCode,
+        // memakai idToken user baru yang baru saja dikembalikan signUp
+        // (idToken ini hanya dipakai sekali untuk request ini, lalu
+        // dibuang — tidak pernah disimpan/dikembalikan ke frontend).
+        try {
+            await fetch(
+                `https://identitytoolkit.googleapis.com/v1/accounts:sendOobCode?key=${FIREBASE_API_KEY}`,
+                {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ requestType: 'VERIFY_EMAIL', idToken: signUpData.idToken })
+                }
+            );
+        } catch (verifyErr) {
+            // User-nya tetap berhasil dibuat walau pengiriman email verifikasi
+            // gagal (mis. gangguan jaringan sesaat) — jangan gagalkan seluruh
+            // request karena ini, cukup dicatat di log server.
+            console.error('Gagal mengirim email verifikasi untuk user baru:', verifyErr);
+        }
+
         return res.status(200).json({
             ok: true,
             uid: signUpData.localId,

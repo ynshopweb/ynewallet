@@ -85,6 +85,40 @@
         </div>
     </div>
 
+    <!-- VERIFY EMAIL SCREEN (tampil setelah daftar / login, selama
+         emailVerified masih false — TIDAK boleh digabung statis dengan
+         "hidden", class "flex" ditambah/dilepas via JS di auth.js) -->
+    <div id="verify-email-screen" class="hidden fixed inset-0 z-40 items-center justify-center p-4 bg-gradient-to-br from-brand-600 via-brand-500 to-pink-500">
+        <div class="bg-white rounded-3xl max-w-sm w-full p-7 shadow-2xl space-y-5 text-center">
+            <div class="w-14 h-14 mx-auto rounded-2xl bg-gradient-to-tr from-brand-600 to-brand-400 flex items-center justify-center text-white text-2xl shadow-md shadow-brand-200">
+                ✉️
+            </div>
+            <div>
+                <h1 class="font-extrabold text-slate-900 text-xl">Konfirmasi Email Kamu</h1>
+                <p class="text-xs text-slate-500 mt-2">
+                    Kami sudah mengirim link konfirmasi ke
+                    <span id="verify-email-address" class="font-semibold text-slate-700">email kamu</span>.
+                    Buka email itu dan klik link-nya untuk mengaktifkan akun.
+                </p>
+            </div>
+
+            <button id="check-verification-btn" onclick="handleCheckEmailVerified()" class="w-full bg-brand-500 hover:bg-brand-600 disabled:opacity-60 text-white font-bold py-3 rounded-xl shadow-lg shadow-pink-200 transition-all">
+                Saya Sudah Konfirmasi
+            </button>
+
+            <div class="flex items-center justify-between text-xs">
+                <button id="resend-verification-btn" onclick="handleResendVerificationEmail()" class="text-brand-600 font-bold hover:underline disabled:opacity-60 disabled:no-underline">
+                    Kirim Ulang Email
+                </button>
+                <button onclick="handleLogout()" class="text-slate-400 hover:text-rose-500 font-semibold">
+                    Logout
+                </button>
+            </div>
+
+            <p class="text-[11px] text-slate-400">Tidak ketemu emailnya? Cek folder Spam/Promosi.</p>
+        </div>
+    </div>
+
     <!-- ONBOARDING SCREEN (first login / user lama yang belum punya
          workspaceName) — TIDAK boleh digabung statis dengan "hidden",
          class "flex" ditambah/dilepas via JS di auth.js & onboarding.js -->

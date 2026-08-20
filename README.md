@@ -36,6 +36,26 @@ yn-money/
                                   "Tambah User Baru (Admin)" di sidebar
 ```
 
+## Verifikasi Email (wajib sebelum masuk aplikasi)
+
+Daftar akun WAJIB pakai email asli yang bisa diakses user — begitu daftar,
+Firebase mengirim link konfirmasi ke email itu (`sendEmailVerification`).
+Selama email belum dikonfirmasi (`user.emailVerified` masih `false`),
+user hanya melihat `#verify-email-screen` — TIDAK bisa masuk onboarding
+atau Dashboard sama sekali, dan data Firestore-nya juga sengaja belum
+dimuat. Ada tombol "Kirim Ulang Email" (kalau email pertama tidak
+sampai/hilang) dan "Saya Sudah Konfirmasi" (cek ulang status setelah
+user klik link di emailnya).
+
+User yang dibuat lewat fitur admin "Tambah User Baru" juga otomatis
+dikirimkan email verifikasi (lihat `api/admin/create-user.js`), karena
+pembuatan lewat REST API server-side tidak memicu pengiriman otomatis
+seperti form Register biasa.
+
+Template email verifikasi (judul, isi, bahasa) diatur di
+[Firebase Console → Authentication → Templates](https://console.firebase.google.com/project/ynwallet/authentication/emails) —
+bukan di kode aplikasi ini.
+
 ## Personal Workspace Name
 
 Setiap user punya nama wallet sendiri (bukan hardcoded "YN MONEY" untuk
