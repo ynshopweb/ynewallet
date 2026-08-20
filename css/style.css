@@ -1,6 +1,17 @@
+        /* Pengaman responsive: cegah halaman "melebar" ke samping di mobile.
+           Beberapa browser mobile tetap membuat viewport bisa di-scroll/di-zoom
+           horizontal kalau ada elemen (mis. teks panjang di dalam flex/grid)
+           yang sedikit melebihi lebar layar, walau body sudah overflow-hidden —
+           karena elemen fixed-position diukur terhadap <html>, bukan <body>. */
+        html {
+            overflow-x: hidden;
+            max-width: 100%;
+        }
         body {
             font-family: 'Inter', sans-serif;
             -webkit-tap-highlight-color: transparent;
+            overflow-x: hidden;
+            max-width: 100%;
         }
         .hide-scrollbar::-webkit-scrollbar {
             display: none;

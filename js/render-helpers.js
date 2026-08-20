@@ -26,17 +26,17 @@
             }
 
             return `
-                <div class="flex items-center justify-between p-3 rounded-2xl bg-slate-50 hover:bg-pink-50/50 transition-colors border border-slate-100 text-xs">
-                    <div class="flex items-center gap-3">
-                        <div class="w-8 h-8 rounded-xl ${badgeColor} flex items-center justify-center font-bold">
+                <div class="flex items-center justify-between gap-2 p-3 rounded-2xl bg-slate-50 hover:bg-pink-50/50 transition-colors border border-slate-100 text-xs">
+                    <div class="flex items-center gap-3 min-w-0">
+                        <div class="w-8 h-8 rounded-xl ${badgeColor} flex items-center justify-center font-bold flex-shrink-0">
                             <i class="fa-solid ${icon}"></i>
                         </div>
-                        <div>
-                            <p class="font-bold text-slate-800">${t.category || t.type.toUpperCase()}</p>
-                            <p class="text-[10px] text-slate-400">${t.date} • ${t.account} ${t.notes ? `• ${t.notes}` : ''}</p>
+                        <div class="min-w-0">
+                            <p class="font-bold text-slate-800 truncate">${t.category || t.type.toUpperCase()}</p>
+                            <p class="text-[10px] text-slate-400 truncate">${t.date} • ${t.account} ${t.notes ? `• ${t.notes}` : ''}</p>
                         </div>
                     </div>
-                    <div class="text-right">
+                    <div class="text-right flex-shrink-0">
                         <span class="font-bold text-sm ${t.type === 'income' ? 'text-emerald-600' : t.type === 'expense' ? 'text-rose-600' : 'text-slate-800'}">
                             ${prefix}Rp ${Number(t.amount).toLocaleString('id-ID')}
                         </span>

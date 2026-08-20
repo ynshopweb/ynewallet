@@ -18,6 +18,8 @@ import {
 } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
 import { doc, getDoc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 import { showToast } from './ui-utils.js';
+import { cloneDefaultState } from './state.js';
+import { applyWorkspaceBranding } from './workspace.js';
 
 window.currentUser = null;
 let unsubscribeSnapshot = null;
@@ -64,7 +66,7 @@ window.handleRegister = async function(e) {
     setAuthLoading(true);
     try {
         await createUserWithEmailAndPassword(auth, email, password);
-        showToast('Akun berhasil dibuat! Selamat datang di YN MONEY 🎉');
+        showToast('Akun berhasil dibuat! Yuk atur wallet kamu 🎉');
     } catch (err) {
         showAuthError(err);
     } finally {
@@ -121,12 +123,39 @@ function hideFlex(el) {
     el.classList.add('hidden');
 }
 
+// Dipanggil onboarding.js setelah form "Mulai Mengelola →" berhasil
+// disimpan (workspaceName + onboardingCompleted:true) -> pindah dari
+// onboarding-screen ke Dashboard yang sudah pakai nama wallet baru.
+window.showAppShellAfterOnboarding = function() {
+    hideFlex(document.getElementById('onboarding-screen'));
+    showFlex(document.getElementById('app-shell'));
+    window.currentTab = window.currentTab || 'dashboard';
+    applyWorkspaceBranding();
+    window.renderCurrentTab();
+};
+
 onAuthStateChanged(auth, async (user) => {
     const authScreen = document.getElementById('auth-screen');
     const appShell = document.getElementById('app-shell');
+    const onboardingScreen = document.getElementById('onboarding-screen');
 
     if (user) {
         window.currentUser = user;
+
+        // PENTING: reset dulu ke state kosong SEBELUM memuat apa pun.
+        // Ini mencegah render sekejap (atau, kalau terjadi error di bawah)
+        // menampilkan sisa data user sebelumnya yang masih menempel di
+        // window.appState pada sesi browser yang sama.
+        window.resetAppState();
+
+        // Cache lokal instan HANYA milik uid ini (key sudah di-scope per-uid
+        // di state.js) — aman dipakai sebagai starting point sementara
+        // sambil menunggu Firestore, karena tidak mungkin berisi data akun lain.
+        const localCache = window.loadLocalStateCache(user.uid);
+        if (localCache) {
+            window.appState = localCache;
+            window.renderCurrentTab();
+        }
 
         try {
             const ref = userDocRef(user.uid);
@@ -134,7 +163,14 @@ onAuthStateChanged(auth, async (user) => {
             if (snap.exists()) {
                 window.appState = snap.data();
             } else {
-                // User baru pertama kali login -> simpan state awal (DEFAULT_STATE) ke Firestore
+                // User baru pertama kali login -> HARUS mulai benar-benar kosong
+                // (Rp0, tanpa transaksi/goal/aset apa pun, workspaceName juga
+                // masih null — TIDAK diisi otomatis dengan nama default apa
+                // pun). Sengaja memakai state kosong baru, BUKAN window.appState
+                // yang sedang aktif, supaya tidak mungkin ada sisa data (dari
+                // cache lokal atau sesi user lain di device yang sama) ikut
+                // ter-inherit oleh user baru ini.
+                window.appState = cloneDefaultState();
                 await setDoc(ref, window.appState);
             }
 
@@ -142,6 +178,7 @@ onAuthStateChanged(auth, async (user) => {
             unsubscribeSnapshot = onSnapshot(ref, (snapshot) => {
                 if (snapshot.exists()) {
                     window.appState = snapshot.data();
+                    applyWorkspaceBranding();
                     window.renderCurrentTab();
                 }
             }, (err) => console.error('Firestore sync error:', err));
@@ -155,16 +192,33 @@ onAuthStateChanged(auth, async (user) => {
         document.getElementById('user-display-name').innerText = user.email;
 
         hideFlex(authScreen);
-        showFlex(appShell);
-        window.currentTab = window.currentTab || 'dashboard';
-        window.renderCurrentTab();
+
+        // Onboarding wajib tampil kalau user (baru ATAU lama) belum punya
+        // workspaceName yang valid + onboardingCompleted:true. User lama
+        // yang datanya sudah lengkap TIDAK diganggu — langsung ke Dashboard.
+        const needsOnboarding = !window.appState.workspaceName || !window.appState.onboardingCompleted;
+
+        if (needsOnboarding) {
+            hideFlex(appShell);
+            showFlex(onboardingScreen);
+        } else {
+            hideFlex(onboardingScreen);
+            showFlex(appShell);
+            window.currentTab = window.currentTab || 'dashboard';
+            applyWorkspaceBranding();
+            window.renderCurrentTab();
+        }
     } else {
         window.currentUser = null;
+        // Bersihkan state di memori supaya sesi berikutnya (login user lain
+        // di device yang sama) mulai dari nol, bukan dari sisa data user ini.
+        window.resetAppState();
         if (unsubscribeSnapshot) {
             unsubscribeSnapshot();
             unsubscribeSnapshot = null;
         }
         hideFlex(appShell);
+        hideFlex(onboardingScreen);
         showFlex(authScreen);
         document.getElementById('form-auth').reset();
         window.toggleAuthMode('login');

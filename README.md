@@ -29,10 +29,60 @@ yn-money/
     ├── crud-actions.js          Semua delete*() dan add*Prompt()
     ├── ui-utils.js              showToast(), triggerCelebration()
     ├── firebase-config.js       Config & init Firebase (project ynwallet)
-    └── auth.js                  Register/Login/Logout email & password,
-                                  gate #auth-screen vs #app-shell, load &
-                                  live-sync data user dari Firestore
+    ├── auth.js                  Register/Login/Logout email & password,
+    │                             gate #auth-screen vs #app-shell, load &
+    │                             live-sync data user dari Firestore
+    └── admin.js                 window.handleAdminCreateUser() — form
+                                  "Tambah User Baru (Admin)" di sidebar
 ```
+
+## Personal Workspace Name
+
+Setiap user punya nama wallet sendiri (bukan hardcoded "YN MONEY" untuk
+semua orang) — field `workspaceName` + `onboardingCompleted` disimpan di
+dokumen `users/{uid}/app_data/main` yang sama, di-manage oleh
+`js/workspace.js` (validasi + terapkan ke UI) dan `js/onboarding.js`
+(form first-login + modal ubah nama).
+
+- User baru (dan user lama yang datanya belum punya `workspaceName`)
+  akan melihat layar onboarding "Yuk buat ruang keuangan kamu" SEBELUM
+  Dashboard tampil. Nama TIDAK PERNAH otomatis diisi "YN Money" —
+  wajib diisi user sendiri (2–30 karakter, whitespace-only dianggap
+  kosong).
+- User lama yang sudah punya `workspaceName` tidak diganggu sama
+  sekali — langsung ke Dashboard seperti biasa.
+- Nama bisa diubah kapan saja lewat ikon pensil di sebelah nama wallet
+  di sidebar.
+
+## Multi-user & isolasi data
+
+Setiap user punya dokumen Firestore-nya sendiri di path
+`users/{uid}/app_data/main` — isolasi terjadi di level **path dokumen**,
+bukan lewat field `userId` di satu koleksi besar. Karena itu tidak ada
+skema lama yang perlu dimigrasikan: data user manapun secara struktural
+sudah tidak mungkin "ketuker" dengan data user lain di Firestore.
+
+User baru (baik daftar sendiri lewat form Register, maupun dibuatkan oleh
+admin lewat "Tambah User Baru") **selalu mulai dari Rp0** — begitu login
+pertama kali dan Firestore belum punya dokumen untuknya, `js/auth.js`
+otomatis membuatkan dokumen data kosong (tanpa aset, transaksi, goal,
+budget, dsb apa pun). Cache `localStorage` juga di-scope per-UID
+(`YN_MONEY_STATE_{uid}`) supaya di device yang dipakai bergantian oleh
+beberapa akun, cache satu user tidak pernah terbaca sebagai starting
+point user lain.
+
+### Admin: Tambah User Baru
+
+Ada tombol **"Tambah User Baru (Admin)"** di bagian bawah sidebar. Supaya
+tombol ini benar-benar berfungsi (bukan cuma tampil), kamu perlu set env
+var `ADMIN_UIDS` di Vercel — lihat `.env.example`. Tanpa env var ini,
+endpoint-nya menolak semua request (fail-closed), jadi aman meskipun
+tombolnya sengaja terlihat oleh semua user yang login.
+
+User yang dibuat lewat form ini bisa langsung dipakai untuk login
+(email + password yang admin masukkan), dan sesi login admin sendiri
+**tidak terganggu** sama sekali — pembuatan user terjadi di server, bukan
+lewat Firebase Auth SDK di browser admin.
 
 ## Auth Email & Password (Firebase)
 
@@ -173,3 +223,24 @@ Semua fungsi yang dipanggil langsung dari atribut `onclick`/`onsubmit`
 di `index.html` (mis. `switchTab()`, `openModal()`, `handleSaveGoal()`,
 `deleteAsset()`, dst.) tetap didaftarkan ke `window.*` persis seperti
 versi aslinya, jadi HTML-nya tidak perlu diubah sama sekali.
+
+### ⚠️ Cek Firestore Security Rules (di Firebase Console, bukan di repo ini)
+
+Kode aplikasi mencegah *bug* salah kirim data, tapi penegak akhir isolasi
+antar-user adalah Firestore Security Rules. Pastikan di
+[Firebase Console → Firestore → Rules](https://console.firebase.google.com/project/ynwallet/firestore/rules)
+ada aturan seperti ini (supaya user hanya bisa baca/tulis dokumennya sendiri):
+
+```
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /users/{uid}/{document=**} {
+      allow read, write: if request.auth != null && request.auth.uid == uid;
+    }
+  }
+}
+```
+
+Tanpa rules ini, seseorang yang tahu UID user lain secara teknis bisa
+mengakses data itu langsung lewat Firestore API (di luar aplikasi ini).

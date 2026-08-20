@@ -20,6 +20,9 @@
  */
 import './state.js';
 import './auth.js';
+import './admin.js';
+import './workspace.js';
+import './onboarding.js';
 import './navigation.js';
 import './render.js';
 import './modals.js';

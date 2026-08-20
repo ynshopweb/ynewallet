@@ -160,17 +160,17 @@ import { renderTransactionItem, renderMoneyFlowChart } from './render-helpers.js
                             </div>
                             <div class="space-y-2.5">
                                 ${window.appState.assets.map(a => `
-                                    <div class="flex items-center justify-between p-2.5 rounded-xl bg-slate-50 border border-slate-100 text-xs">
-                                        <div class="flex items-center gap-2.5">
-                                            <div class="w-7 h-7 rounded-lg bg-pink-100 text-brand-600 font-bold flex items-center justify-center text-xs">
+                                    <div class="flex items-center justify-between gap-2 p-2.5 rounded-xl bg-slate-50 border border-slate-100 text-xs">
+                                        <div class="flex items-center gap-2.5 min-w-0">
+                                            <div class="w-7 h-7 rounded-lg bg-pink-100 text-brand-600 font-bold flex items-center justify-center text-xs flex-shrink-0">
                                                 <i class="fa-solid fa-vault"></i>
                                             </div>
-                                            <div>
-                                                <p class="font-bold text-slate-800">${a.name}</p>
-                                                <p class="text-[10px] text-slate-400">${a.type}</p>
+                                            <div class="min-w-0">
+                                                <p class="font-bold text-slate-800 truncate">${a.name}</p>
+                                                <p class="text-[10px] text-slate-400 truncate">${a.type}</p>
                                             </div>
                                         </div>
-                                        <span class="font-bold text-slate-800">Rp ${Number(a.balance).toLocaleString('id-ID')}</span>
+                                        <span class="font-bold text-slate-800 flex-shrink-0">Rp ${Number(a.balance).toLocaleString('id-ID')}</span>
                                     </div>
                                 `).join('')}
                             </div>
@@ -234,15 +234,15 @@ import { renderTransactionItem, renderMoneyFlowChart } from './render-helpers.js
                         </div>
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                             ${window.appState.assets.map(a => `
-                                <div class="bg-white rounded-2xl p-4 border border-pink-100 shadow-sm flex items-center justify-between">
-                                    <div class="space-y-1">
-                                        <div class="flex items-center gap-2">
-                                            <span class="text-xs px-2 py-0.5 rounded-md font-bold bg-pink-100 text-brand-700">${a.type}</span>
-                                            <h4 class="font-bold text-slate-800 text-sm">${a.name}</h4>
+                                <div class="bg-white rounded-2xl p-4 border border-pink-100 shadow-sm flex items-center justify-between gap-2">
+                                    <div class="space-y-1 min-w-0">
+                                        <div class="flex items-center gap-2 min-w-0">
+                                            <span class="text-xs px-2 py-0.5 rounded-md font-bold bg-pink-100 text-brand-700 flex-shrink-0">${a.type}</span>
+                                            <h4 class="font-bold text-slate-800 text-sm truncate">${a.name}</h4>
                                         </div>
-                                        <p class="text-xs text-slate-400">${a.notes || 'Tanpa catatan'}</p>
+                                        <p class="text-xs text-slate-400 truncate">${a.notes || 'Tanpa catatan'}</p>
                                     </div>
-                                    <div class="text-right">
+                                    <div class="text-right flex-shrink-0">
                                         <p class="text-base font-bold text-slate-800">Rp ${Number(a.balance).toLocaleString('id-ID')}</p>
                                         <button onclick="deleteAsset('${a.id}')" class="text-slate-300 hover:text-rose-500 text-xs mt-1 transition-colors"><i class="fa-solid fa-trash-can"></i> Hapus</button>
                                     </div>
@@ -264,12 +264,12 @@ import { renderTransactionItem, renderMoneyFlowChart } from './render-helpers.js
                         </div>
                         <div class="space-y-2">
                             ${window.appState.liabilities.map(l => `
-                                <div class="flex justify-between items-center p-3 rounded-xl bg-slate-50 text-xs">
-                                    <div>
-                                        <p class="font-bold text-slate-800">${l.name}</p>
-                                        <p class="text-[10px] text-slate-400">${l.notes}</p>
+                                <div class="flex justify-between items-center gap-2 p-3 rounded-xl bg-slate-50 text-xs">
+                                    <div class="min-w-0">
+                                        <p class="font-bold text-slate-800 truncate">${l.name}</p>
+                                        <p class="text-[10px] text-slate-400 truncate">${l.notes}</p>
                                     </div>
-                                    <div class="text-right">
+                                    <div class="text-right flex-shrink-0">
                                         <span class="font-bold text-rose-600">Rp ${Number(l.amount).toLocaleString('id-ID')}</span>
                                         <button onclick="deleteLiability('${l.id}')" class="text-slate-400 hover:text-rose-500 ml-3"><i class="fa-solid fa-xmark"></i></button>
                                     </div>
@@ -318,18 +318,18 @@ import { renderTransactionItem, renderMoneyFlowChart } from './render-helpers.js
                             return `
                                 <div class="bg-white rounded-3xl p-5 border border-pink-100 shadow-sm flex flex-col justify-between space-y-4 hover:shadow-md transition-all relative overflow-hidden">
                                     <div class="space-y-3">
-                                        <div class="flex items-start justify-between">
-                                            <div class="flex items-center gap-3">
-                                                <div class="w-12 h-12 rounded-2xl bg-pink-50 flex items-center justify-center text-2xl border border-pink-100">
+                                        <div class="flex items-start justify-between gap-2">
+                                            <div class="flex items-center gap-3 min-w-0">
+                                                <div class="w-12 h-12 rounded-2xl bg-pink-50 flex items-center justify-center text-2xl border border-pink-100 flex-shrink-0">
                                                     ${g.icon}
                                                 </div>
-                                                <div>
+                                                <div class="min-w-0">
                                                     <span class="text-[10px] px-2 py-0.5 rounded-full font-bold ${priorityColors[g.priority] || 'bg-slate-100'}">${g.priority} Priority</span>
-                                                    <h4 class="font-bold text-slate-800 text-base leading-snug">${g.name}</h4>
-                                                    <span class="text-[10px] text-slate-400">${g.category}</span>
+                                                    <h4 class="font-bold text-slate-800 text-base leading-snug truncate">${g.name}</h4>
+                                                    <span class="text-[10px] text-slate-400 truncate block">${g.category}</span>
                                                 </div>
                                             </div>
-                                            <button onclick="deleteGoal('${g.id}')" class="text-slate-300 hover:text-rose-500"><i class="fa-solid fa-trash-can text-xs"></i></button>
+                                            <button onclick="deleteGoal('${g.id}')" class="text-slate-300 hover:text-rose-500 flex-shrink-0"><i class="fa-solid fa-trash-can text-xs"></i></button>
                                         </div>
 
                                         <!-- Progress Bar -->
@@ -361,10 +361,10 @@ import { renderTransactionItem, renderMoneyFlowChart } from './render-helpers.js
                                     </div>
 
                                     <div class="pt-2 border-t border-slate-100 flex items-center justify-between gap-2">
-                                        <div class="text-[10px] text-slate-400">
+                                        <div class="text-[10px] text-slate-400 min-w-0">
                                             Deadline: <br><b class="text-slate-600">${g.deadline}</b>
                                         </div>
-                                        <button onclick="openAddMoneyToGoal('${g.id}')" class="bg-brand-500 hover:bg-brand-600 text-white font-bold text-xs px-3.5 py-2 rounded-xl shadow-md transition-all">
+                                        <button onclick="openAddMoneyToGoal('${g.id}')" class="bg-brand-500 hover:bg-brand-600 text-white font-bold text-xs px-3.5 py-2 rounded-xl shadow-md transition-all flex-shrink-0">
                                             + Add Money
                                         </button>
                                     </div>
@@ -397,13 +397,13 @@ import { renderTransactionItem, renderMoneyFlowChart } from './render-helpers.js
 
                                 return `
                                     <div class="p-4 rounded-2xl bg-slate-50 border border-slate-100 space-y-2">
-                                        <div class="flex justify-between items-center text-xs">
-                                            <div class="flex items-center gap-2">
-                                                <span class="font-bold text-slate-800 text-sm">${b.category}</span>
-                                                ${isOver ? `<span class="bg-rose-100 text-rose-700 font-bold px-2 py-0.5 rounded-full text-[10px]">Over Budget!</span>` : ''}
-                                                ${isWarning ? `<span class="bg-amber-100 text-amber-700 font-bold px-2 py-0.5 rounded-full text-[10px]">Warning 80%</span>` : ''}
+                                        <div class="flex justify-between items-center gap-2 text-xs">
+                                            <div class="flex items-center gap-2 min-w-0 flex-wrap">
+                                                <span class="font-bold text-slate-800 text-sm truncate">${b.category}</span>
+                                                ${isOver ? `<span class="bg-rose-100 text-rose-700 font-bold px-2 py-0.5 rounded-full text-[10px] flex-shrink-0">Over Budget!</span>` : ''}
+                                                ${isWarning ? `<span class="bg-amber-100 text-amber-700 font-bold px-2 py-0.5 rounded-full text-[10px] flex-shrink-0">Warning 80%</span>` : ''}
                                             </div>
-                                            <span class="font-bold text-slate-700">Rp ${spent.toLocaleString('id-ID')} / Rp ${Number(b.allocated).toLocaleString('id-ID')}</span>
+                                            <span class="font-bold text-slate-700 flex-shrink-0">Rp ${spent.toLocaleString('id-ID')} / Rp ${Number(b.allocated).toLocaleString('id-ID')}</span>
                                         </div>
 
                                         <div class="w-full bg-slate-200 rounded-full h-2.5 overflow-hidden">
@@ -481,12 +481,12 @@ import { renderTransactionItem, renderMoneyFlowChart } from './render-helpers.js
 
                 container.innerHTML = `
                     <div class="bg-white rounded-3xl p-6 border border-pink-100 shadow-sm space-y-4">
-                        <div class="flex justify-between items-center">
-                            <div>
+                        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                            <div class="min-w-0">
                                 <h3 class="font-extrabold text-slate-800 text-lg">Business / Kas Usaha</h3>
                                 <p class="text-xs text-slate-400">Pencatatan saldo dan transaksi terpisah untuk usaha/toko</p>
                             </div>
-                            <span class="bg-pink-100 text-brand-700 text-xs font-bold px-3 py-1 rounded-full">Saldo Kas Toko: Rp ${busBalance.toLocaleString('id-ID')}</span>
+                            <span class="bg-pink-100 text-brand-700 text-xs font-bold px-3 py-1 rounded-full flex-shrink-0 self-start">Saldo Kas Toko: Rp ${busBalance.toLocaleString('id-ID')}</span>
                         </div>
 
                         <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs pt-2">
@@ -519,15 +519,15 @@ import { renderTransactionItem, renderMoneyFlowChart } from './render-helpers.js
 
                         <div class="space-y-2">
                             ${window.appState.freelance.map(f => `
-                                <div class="flex items-center justify-between p-3.5 rounded-2xl bg-slate-50 border border-slate-100 text-xs">
-                                    <div>
-                                        <div class="flex items-center gap-2">
-                                            <span class="font-bold text-slate-800 text-sm">${f.project}</span>
-                                            <span class="px-2 py-0.5 rounded-full text-[10px] font-bold ${f.status === 'Paid' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}">${f.status}</span>
+                                <div class="flex items-center justify-between gap-2 p-3.5 rounded-2xl bg-slate-50 border border-slate-100 text-xs">
+                                    <div class="min-w-0">
+                                        <div class="flex items-center gap-2 min-w-0 flex-wrap">
+                                            <span class="font-bold text-slate-800 text-sm truncate">${f.project}</span>
+                                            <span class="px-2 py-0.5 rounded-full text-[10px] font-bold flex-shrink-0 ${f.status === 'Paid' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}">${f.status}</span>
                                         </div>
-                                        <p class="text-[11px] text-slate-400">Client: ${f.client} • Date: ${f.date}</p>
+                                        <p class="text-[11px] text-slate-400 truncate">Client: ${f.client} • Date: ${f.date}</p>
                                     </div>
-                                    <div class="text-right">
+                                    <div class="text-right flex-shrink-0">
                                         <p class="font-bold text-slate-800 text-sm">Rp ${Number(f.amount).toLocaleString('id-ID')}</p>
                                         <button onclick="deleteFreelance('${f.id}')" class="text-slate-300 hover:text-rose-500 text-[10px]"><i class="fa-solid fa-trash"></i> Hapus</button>
                                     </div>
@@ -591,12 +591,12 @@ import { renderTransactionItem, renderMoneyFlowChart } from './render-helpers.js
                         </div>
                         <div class="space-y-2">
                             ${window.appState.recurring.map(r => `
-                                <div class="flex justify-between items-center p-3 rounded-xl bg-slate-50 text-xs">
-                                    <div>
-                                        <p class="font-bold text-slate-800">${r.name}</p>
-                                        <p class="text-[10px] text-slate-400">Setiap Tanggal ${r.day} • Akun: ${r.account}</p>
+                                <div class="flex justify-between items-center gap-2 p-3 rounded-xl bg-slate-50 text-xs">
+                                    <div class="min-w-0">
+                                        <p class="font-bold text-slate-800 truncate">${r.name}</p>
+                                        <p class="text-[10px] text-slate-400 truncate">Setiap Tanggal ${r.day} • Akun: ${r.account}</p>
                                     </div>
-                                    <span class="font-bold ${r.type === 'income' ? 'text-emerald-600' : 'text-rose-600'}">Rp ${Number(r.amount).toLocaleString('id-ID')}</span>
+                                    <span class="font-bold flex-shrink-0 ${r.type === 'income' ? 'text-emerald-600' : 'text-rose-600'}">Rp ${Number(r.amount).toLocaleString('id-ID')}</span>
                                 </div>
                             `).join('')}
                         </div>
